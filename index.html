@@ -40,16 +40,19 @@
     </div>
   </header>
 
-  <!-- APP TOGGLE SWITCH -->
+<!-- APP TOGGLE SWITCH -->
   <div class="max-w-6xl mx-auto w-full mb-8 bg-slate-200 dark:bg-slate-800 p-1.5 rounded-xl flex shadow-inner border border-slate-300 dark:border-slate-700">
-    <button onclick="switchTab('repair')" id="btn-tab-repair" class="flex-1 py-3 text-center text-sm md:text-base font-bold rounded-lg text-slate-500 dark:text-slate-400 transition-all">
-        <i class="fa-solid fa-clipboard-list mr-2"></i> Repair Orders
+    <button onclick="switchTab('repair')" id="btn-tab-repair" class="flex-1 py-3 text-center text-sm md:text-base font-bold rounded-lg text-slate-500 dark:text-slate-400 transition-all hover:bg-slate-300/50 dark:hover:bg-slate-700/50">
+        <i class="fa-solid fa-clipboard-list mr-2 hidden sm:inline"></i> Jobs
+    </button>
+    <button onclick="switchTab('fluid')" id="btn-tab-fluid" class="flex-1 py-3 text-center text-sm md:text-base font-bold rounded-lg text-slate-500 dark:text-slate-400 transition-all hover:bg-slate-300/50 dark:hover:bg-slate-700/50">
+        <i class="fa-solid fa-oil-can mr-2 hidden sm:inline"></i> Fluids
     </button>
     <button onclick="switchTab('tools')" id="btn-tab-tools" class="flex-1 py-3 text-center text-sm md:text-base font-bold rounded-lg text-slate-500 dark:text-slate-400 transition-all hover:bg-slate-300/50 dark:hover:bg-slate-700/50">
-        <i class="fa-solid fa-wrench mr-2"></i> Tool Tracker
+        <i class="fa-solid fa-wrench mr-2 hidden sm:inline"></i> Tools
     </button>
     <button onclick="switchTab('time')" id="btn-tab-time" class="flex-1 py-3 text-center text-sm md:text-base font-bold rounded-lg text-slate-500 dark:text-slate-400 transition-all hover:bg-slate-300/50 dark:hover:bg-slate-700/50">
-        <i class="fa-solid fa-clock mr-2"></i> Time & Trello
+        <i class="fa-solid fa-clock mr-2 hidden sm:inline"></i> Time
     </button>
   </div>
 
@@ -77,6 +80,7 @@
   </div>
 
   <!-- Main JavaScript File -->
+    <script src="js/fluid_data.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
