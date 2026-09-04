@@ -27,6 +27,8 @@ async function switchTab(tabName) {
         // 3. Trigger context-specific renders after HTML loads
         if (tabName === 'repair') {
             renderRepairCategories();
+        } else if (tabName === 'fluid') {
+            initFluidSearch();
         } else if (tabName === 'tools') {
             performToolSearch();
             renderRacksList();
@@ -213,6 +215,85 @@ function deleteCurrentJob() {
     document.getElementById('actionFooter').classList.add('hidden');
     selectedJob = null;
     updateSyncStatus("Job Deleted");
+}
+
+/* -------------------------------------------
+   FLUID SEARCH LOGIC
+------------------------------------------- */
+function initFluidSearch() {
+    const yearSelect = document.getElementById('fluid-year');
+    if (!yearSelect) return;
+    
+    // Get unique years, sort descending
+    const years = [...new Set(fluidDatabase.map(item => item.year))].sort((a, b) => b - a);
+    yearSelect.innerHTML = '<option value="">Select Year...</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
+    
+    document.getElementById('fluid-make').innerHTML = '<option value="">Select Make...</option>';
+    document.getElementById('fluid-model').innerHTML = '<option value="">Select Model...</option>';
+    document.getElementById('fluid-engine').innerHTML = '<option value="">Select Engine...</option>';
+    
+    document.getElementById('fluid-make').disabled = true;
+    document.getElementById('fluid-model').disabled = true;
+    document.getElementById('fluid-engine').disabled = true;
+    document.getElementById('fluid-result-card').classList.add('hidden');
+}
+
+function fluidDropdownUpdate(step) {
+    const year = document.getElementById('fluid-year').value;
+    const make = document.getElementById('fluid-make').value;
+    const model = document.getElementById('fluid-model').value;
+    const engine = document.getElementById('fluid-engine').value;
+
+    document.getElementById('fluid-result-card').classList.add('hidden');
+
+    if (step === 'year') {
+        const makes = [...new Set(fluidDatabase.filter(i => i.year === year).map(i => i.make))].sort();
+        document.getElementById('fluid-make').innerHTML = '<option value="">Select Make...</option>' + makes.map(m => `<option value="${m}">${m}</option>`).join('');
+        document.getElementById('fluid-make').disabled = false;
+        
+        document.getElementById('fluid-model').innerHTML = '<option value="">Select Model...</option>';
+        document.getElementById('fluid-model').disabled = true;
+        document.getElementById('fluid-engine').innerHTML = '<option value="">Select Engine...</option>';
+        document.getElementById('fluid-engine').disabled = true;
+    } 
+    else if (step === 'make') {
+        const models = [...new Set(fluidDatabase.filter(i => i.year === year && i.make === make).map(i => i.model))].sort();
+        document.getElementById('fluid-model').innerHTML = '<option value="">Select Model...</option>' + models.map(m => `<option value="${m}">${m}</option>`).join('');
+        document.getElementById('fluid-model').disabled = false;
+        
+        document.getElementById('fluid-engine').innerHTML = '<option value="">Select Engine...</option>';
+        document.getElementById('fluid-engine').disabled = true;
+    }
+    else if (step === 'model') {
+        const engines = [...new Set(fluidDatabase.filter(i => i.year === year && i.make === make && i.model === model).map(i => i.engine))].sort();
+        document.getElementById('fluid-engine').innerHTML = '<option value="">Select Engine...</option>' + engines.map(e => `<option value="${e}">${e}</option>`).join('');
+        document.getElementById('fluid-engine').disabled = false;
+    }
+    else if (step === 'engine') {
+        const result = fluidDatabase.find(i => i.year === year && i.make === make && i.model === model && i.engine === engine);
+        if (result) showFluidResult(result);
+    }
+}
+
+function showFluidResult(data) {
+    const card = document.getElementById('fluid-result-card');
+    card.classList.remove('hidden', 'bg-emerald-100', 'border-emerald-500', 'text-emerald-900', 'bg-blue-100', 'border-blue-500', 'text-blue-900', 'bg-red-100', 'border-red-500', 'text-red-900');
+    
+    // Apply Colors based on Action (Bulk vs Shelf vs Dealer)
+    if (data.action === 'bulk') {
+        card.classList.add('bg-emerald-100', 'border-emerald-500', 'text-emerald-900');
+        document.getElementById('fluid-result-type').innerText = "✅ Approved For Bulk Dispenser";
+    } else if (data.action === 'shelf') {
+        card.classList.add('bg-blue-100', 'border-blue-500', 'text-blue-900');
+        document.getElementById('fluid-result-type').innerText = "🧴 Grab From Back Shelf";
+    } else {
+        card.classList.add('bg-red-100', 'border-red-500', 'text-red-900');
+        document.getElementById('fluid-result-type').innerText = "⚠️ Dealer / Special Order Required";
+    }
+
+    document.getElementById('fluid-result-bottle').innerText = data.bottle;
+    document.getElementById('fluid-result-spec').innerText = data.spec;
+    document.getElementById('fluid-result-notes').innerText = data.notes || "N/A";
 }
 
 /* -------------------------------------------
