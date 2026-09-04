@@ -1,0 +1,67 @@
+<div class="flex space-x-2 mb-4 border-b border-slate-200 dark:border-slate-700 pb-2 w-full">
+    <button onclick="showToolView('view-search')" id="btn-tool-search" class="tool-nav-btn px-4 py-2 text-sm font-semibold rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 transition border border-transparent">
+        <i class="fa-solid fa-magnifying-glass mr-1"></i> Search Tools
+    </button>
+    <button onclick="showToolView('view-add-tool')" id="btn-tool-add" class="tool-nav-btn px-4 py-2 text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-800 transition border border-transparent">
+        <i class="fa-solid fa-circle-plus mr-1"></i> Add Tool
+    </button>
+    <button onclick="showToolView('view-setup')" id="btn-tool-setup" class="tool-nav-btn px-4 py-2 text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-800 transition border border-transparent">
+        <i class="fa-solid fa-gear mr-1"></i> Rack Setup
+    </button>
+</div>
+<div class="glass bg-white/70 border border-slate-200 dark:bg-slate-800/70 dark:border-slate-700/50 p-6 rounded-xl flex-1 overflow-y-auto shadow-sm relative w-full min-h-[500px]">
+    <div id="view-search" class="tool-section block">
+        <div class="flex flex-col md:flex-row gap-4 mb-6">
+            <div class="relative flex-1">
+                <input type="text" id="toolSearchInput" onkeyup="performToolSearch()" placeholder="Search tools..." 
+                    class="w-full p-3 pl-10 rounded-lg shadow-inner border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:border-blue-500 text-sm text-slate-800 dark:text-slate-100">
+                <i class="fa-solid fa-magnifying-glass absolute left-4 top-3.5 text-slate-400"></i>
+            </div>
+            <select id="sortSelect" onchange="updateToolSort()" class="p-3 border border-slate-300 dark:border-slate-700 rounded-lg shadow-sm text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200">
+                <option value="id-asc">Sort: Location (Asc)</option>
+                <option value="id-desc">Sort: Location (Desc)</option>
+                <option value="name-asc">Sort: Name (A-Z)</option>
+                <option value="name-desc">Sort: Name (Z-A)</option>
+            </select>
+        </div>
+        <div id="searchResults" class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4"></div>
+    </div>
+    <div id="view-add-tool" class="tool-section hidden max-w-2xl mx-auto">
+        <h2 class="text-xl font-bold mb-4 border-b border-slate-200 dark:border-slate-700 pb-2 text-blue-600 dark:text-blue-400">Add Tool to Inventory</h2>
+        <form id="toolForm" onsubmit="addTool(event)" class="space-y-4">
+            <div><label class="block text-sm font-medium mb-1">Tool Name</label><input type="text" id="toolName" required class="w-full p-2.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900"></div>
+            <div><label class="block text-sm font-medium mb-1">Category</label><input type="text" id="toolCategory" class="w-full p-2.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900"></div>
+            <div><label class="block text-sm font-medium mb-1">Tags</label><input type="text" id="toolTags" class="w-full p-2.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900"></div>
+            <div class="grid grid-cols-3 gap-4">
+                <div><label class="block text-sm font-medium mb-1">Rack</label><select id="toolRack" required class="w-full p-2.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900"></select></div>
+                <div><label class="block text-sm font-medium mb-1">Shelf</label><input type="number" id="toolShelf" min="1" required class="w-full p-2.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900"></div>
+                <div><label class="block text-sm font-medium mb-1">Position</label><input type="text" id="toolPosition" placeholder="e.g. Slot 3" class="w-full p-2.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900"></div>
+            </div>
+            <button type="submit" class="w-full bg-blue-600 text-white p-3 rounded-lg font-bold mt-4 hover:bg-blue-500 transition shadow">Save Tool</button>
+        </form>
+    </div>
+    <div id="view-setup" class="tool-section hidden max-w-2xl mx-auto">
+        <h2 class="text-xl font-bold mb-4 border-b border-slate-200 dark:border-slate-700 pb-2 text-blue-600 dark:text-blue-400">System Setup</h2>
+        <div class="bg-slate-100 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-300 dark:border-slate-700 mb-6 flex justify-between items-center">
+            <div>
+                <h3 class="font-bold"><i class="fa-solid fa-file-csv text-emerald-600 mr-2"></i> Import Tools CSV</h3>
+                <p class="text-xs text-slate-500">Format: Shelf, Location, Description, Category, Keywords, Position</p>
+            </div>
+            <label class="bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold cursor-pointer hover:bg-emerald-500 text-sm transition shadow">
+                Upload <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="handleCSVImport(event)">
+            </label>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <form id="rackForm" onsubmit="addRack(event)" class="bg-slate-100 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-300 dark:border-slate-700 space-y-3">
+                <h3 class="font-bold border-b border-slate-300 dark:border-slate-700 pb-2">Add New Rack</h3>
+                <div><label class="block text-xs mb-1">Rack Letter</label><input type="text" id="rackName" placeholder="e.g. A" required class="w-full p-2 border border-slate-300 dark:border-slate-700 rounded bg-white dark:bg-slate-800"></div>
+                <div><label class="block text-xs mb-1">Shelves</label><input type="number" id="shelfCount" min="1" required class="w-full p-2 border border-slate-300 dark:border-slate-700 rounded bg-white dark:bg-slate-800"></div>
+                <button type="submit" class="w-full bg-slate-700 hover:bg-slate-600 text-white p-2 rounded font-bold transition shadow">Add Rack</button>
+            </form>
+            <div class="bg-slate-100 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-300 dark:border-slate-700 flex flex-col h-64">
+                <h3 class="font-bold border-b border-slate-300 dark:border-slate-700 pb-2 mb-2">Current Racks</h3>
+                <div id="racksList" class="space-y-2 flex-1 overflow-y-auto pr-2"></div>
+            </div>
+        </div>
+    </div>
+</div>

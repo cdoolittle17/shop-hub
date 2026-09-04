@@ -1,0 +1,121 @@
+<div class="w-full flex flex-col gap-6">
+    <!-- Live Timeclock Section -->
+    <section class="glass bg-white/70 border border-slate-200 dark:bg-slate-800/70 dark:border-slate-700/50 p-6 rounded-xl shadow-sm">
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
+        <div>
+          <h2 class="text-xl font-bold text-blue-600 dark:text-blue-400"><i class="fa-solid fa-stopwatch mr-2"></i> Shop Timeclock</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Select employee to punch in/out. Saves directly to Sheet2 and sends Trello comments securely as TimeSync.</p>
+        </div>
+        <div class="flex items-center gap-3 w-full md:w-auto">
+          <label class="text-sm font-semibold">Employee:</label>
+          <select id="timeclockEmployee" class="bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 p-2.5 rounded-lg text-sm font-bold flex-1 md:w-48">
+            <option value="Caleb">Caleb</option>
+            <option value="Pickles">Pickles</option>
+            <option value="Jason">Jason</option>
+            <option value="Jonathan">Jonathan</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <button onclick="handleClockPunch('Clock In')" class="bg-emerald-600 hover:bg-emerald-500 text-white p-4 rounded-xl font-bold text-sm shadow flex flex-col items-center justify-center gap-1 transition">
+          <i class="fa-solid fa-right-to-bracket text-lg"></i> Clock In
+        </button>
+        <button onclick="handleClockPunch('Lunch Out')" class="bg-amber-600 hover:bg-amber-500 text-white p-4 rounded-xl font-bold text-sm shadow flex flex-col items-center justify-center gap-1 transition">
+          <i class="fa-solid fa-utensils text-lg"></i> Lunch Start
+        </button>
+        <button onclick="handleClockPunch('Lunch In')" class="bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-xl font-bold text-sm shadow flex flex-col items-center justify-center gap-1 transition">
+          <i class="fa-solid fa-mug-hot text-lg"></i> Lunch End
+        </button>
+        <button onclick="handleClockPunch('Clock Out')" class="bg-rose-600 hover:bg-rose-500 text-white p-4 rounded-xl font-bold text-sm shadow flex flex-col items-center justify-center gap-1 transition">
+          <i class="fa-solid fa-right-from-bracket text-lg"></i> Clock Out
+        </button>
+      </div>
+    </section>
+
+    <!-- Trello Timesheet Parser & Summary Section -->
+    <section class="glass bg-white/70 border border-slate-200 dark:bg-slate-800/70 dark:border-slate-700/50 p-6 rounded-xl shadow-sm space-y-4">
+      
+      <div class="flex flex-col sm:flex-row justify-between items-center gap-4 border-b border-slate-200 dark:border-slate-700 pb-4">
+        <div>
+          <h2 class="text-xl font-bold text-slate-800 dark:text-slate-100"><i class="fa-solid fa-file-invoice-dollar mr-2 text-blue-500"></i> Timecard Summary</h2>
+          <p class="text-xs text-slate-500">Punches are chronologically sorted. Edits automatically sync to Google Sheets.</p>
+        </div>
+        <div class="flex flex-wrap gap-2 w-full sm:w-auto">
+          <button onclick="fetchTrelloTimecards()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition flex-1 sm:flex-none">
+            <i class="fa-solid fa-rotate mr-1"></i> Sync
+          </button>
+          <button onclick="generatePDFReport()" class="bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition flex-1 sm:flex-none">
+            <i class="fa-solid fa-file-pdf mr-1"></i> PDF
+          </button>
+          <button onclick="exportCSV()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow transition flex-1 sm:flex-none">
+            <i class="fa-solid fa-file-csv mr-1"></i> CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- LIVE VIEW FILTERS -->
+      <div id="viewFilters" class="hidden bg-slate-100 dark:bg-slate-800/50 p-4 rounded-xl flex-col md:flex-row items-center justify-between gap-4 border border-slate-200 dark:border-slate-700">
+        <div class="flex items-center gap-2 w-full md:w-auto">
+          <label class="text-xs font-bold text-slate-500 uppercase">View Employee:</label>
+          <select id="filterEmp" onchange="renderTimecardSummaries()" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 p-2 rounded-lg text-sm font-bold flex-1 md:w-40 shadow-sm">
+            <option value="All">All Employees</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2 w-full md:w-auto">
+          <label class="text-xs font-bold text-slate-500 uppercase">View Dates:</label>
+          <input type="date" id="filterStart" onchange="renderTimecardSummaries()" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 p-2 rounded-lg text-xs shadow-sm">
+          <span class="text-xs text-slate-500">to</span>
+          <input type="date" id="filterEnd" onchange="renderTimecardSummaries()" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 p-2 rounded-lg text-xs shadow-sm">
+          <button onclick="document.getElementById('filterStart').value=''; document.getElementById('filterEnd').value=''; renderTimecardSummaries()" class="p-2 text-slate-400 hover:text-slate-600 transition" title="Clear Dates"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      </div>
+
+      <!-- ADD MISSING SHIFT BOX -->
+      <div id="addShiftBox" class="hidden bg-emerald-50 dark:bg-emerald-950/20 p-4 rounded-xl flex-col md:flex-row items-center justify-between gap-4 border border-emerald-200 dark:border-emerald-800/50">
+        <div>
+          <h3 class="font-bold text-sm text-emerald-900 dark:text-emerald-300"><i class="fa-solid fa-calendar-plus mr-2"></i> Add Missing Shift</h3>
+          <p class="text-xs text-emerald-700 dark:text-emerald-400">Employee missed a whole day? Inject a standard 8:00 AM - 5:00 PM shift (with 12:00 lunch).</p>
+        </div>
+        <div class="flex items-center gap-2 w-full md:w-auto">
+          <select id="addShiftEmp" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 p-2 rounded-lg text-xs font-bold flex-1 md:w-32 shadow-sm"></select>
+          <input type="date" id="addShiftDate" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 p-2 rounded-lg text-xs shadow-sm">
+          <button onclick="addFullShift()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-4 py-2 rounded-lg font-bold transition shadow-sm whitespace-nowrap">Add Full Shift</button>
+        </div>
+      </div>
+
+      <div id="timecardContainer" class="space-y-6 pt-2">
+        <div class="text-slate-400 text-center py-12">Click "Sync" or configure Time Cards in settings to view summary reports.</div>
+      </div>
+    </section>
+</div>
+
+<!-- MODAL: ADD / EDIT PUNCH -->
+<div id="punchModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+  <div class="glass bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 rounded-xl max-w-sm w-full shadow-2xl space-y-4">
+    <h2 id="punchModalTitle" class="text-lg font-bold text-blue-600 dark:text-blue-400">Edit Punch</h2>
+    
+    <input type="hidden" id="punchModalEmpIdx">
+    <input type="hidden" id="punchModalDateStr">
+    <input type="hidden" id="punchModalPunchIdx">
+
+    <div>
+      <label class="text-xs font-semibold text-slate-500 block mb-1">Punch Type:</label>
+      <select id="punchModalType" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 p-2 rounded text-sm font-bold">
+        <option value="Clock In">Clock In</option>
+        <option value="Lunch Out">Lunch Out</option>
+        <option value="Lunch In">Lunch In</option>
+        <option value="Clock Out">Clock Out</option>
+      </select>
+    </div>
+    <div>
+      <label class="text-xs font-semibold text-slate-500 block mb-1">Time:</label>
+      <input type="time" id="punchModalTime" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 p-2 rounded text-sm">
+    </div>
+
+    <div class="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+      <button onclick="closePunchModal()" class="px-4 py-2 text-sm text-slate-500 font-semibold hover:text-slate-700">Cancel</button>
+      <button onclick="savePunchModal()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg text-sm font-bold shadow transition">Save Punch</button>
+    </div>
+  </div>
+</div>
