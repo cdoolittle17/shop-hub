@@ -543,6 +543,14 @@ async function fetchTimecardConfigsFromSheets() {
 
 function openSettingsModal() {
     renderSettingsConfigRows();
+    
+    // Sync the contrast slider to what is saved in local storage
+    const savedContrast = localStorage.getItem('app-contrast') || '100';
+    const slider = document.getElementById('contrastSlider');
+    if (slider) slider.value = savedContrast;
+    const display = document.getElementById('contrastDisplay');
+    if (display) display.innerText = savedContrast + '%';
+
     document.getElementById('settingsModal').classList.remove('hidden');
     document.getElementById('settingsModal').classList.add('flex');
 }
