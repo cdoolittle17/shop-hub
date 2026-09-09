@@ -27,6 +27,12 @@ async function switchTab(tabName) {
         // 3. Trigger context-specific renders after HTML loads
         if (tabName === 'repair') {
             renderRepairCategories();
+        } else if (tabName === 'maintenance') {
+            // Focus on mileage input when tab opens
+            setTimeout(() => {
+                const el = document.getElementById('maint-mileage');
+                if (el) el.focus();
+            }, 100);
         } else if (tabName === 'fluid') {
             initFluidSearch();
         } else if (tabName === 'tools') {
@@ -215,6 +221,75 @@ function deleteCurrentJob() {
     document.getElementById('actionFooter').classList.add('hidden');
     selectedJob = null;
     updateSyncStatus("Job Deleted");
+}
+
+/* -------------------------------------------
+   RECOMMENDED MAINTENANCE LOGIC
+------------------------------------------- */
+const maintenanceSchedule = {
+    "Oil Service": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 180, 185, 190, 195, 200],
+    "Tire Rotation": [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120, 125, 130, 135, 140, 145, 150, 155, 160, 165, 170, 175, 180, 185, 190, 195, 200],
+    "Fuel/Intake Service": [30, 60, 90, 120, 150, 180],
+    "Brake Flush": [20, 40, 60, 80, 100, 120, 140, 150, 160, 180, 200],
+    "Coolant Service": [60, 100, 120, 160, 200],
+    "Rear Differential Service": [30, 60, 90, 120, 150, 180],
+    "Spark Plugs (replacement)": [80, 90, 100, 120, 160, 180, 200],
+    "Power Steering Service": [30, 60, 90, 120, 160, 180],
+    "Belts Serpentine & Timing (replacement)": [80, 90, 100, 140, 160, 180],
+    "Air Filter (replacement)": [20, 40, 60, 80, 100, 120, 135, 150, 165, 180],
+    "Cabin Filter (replacement)": [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180],
+    "Intelligent Key Battery (replacement)": [30, 45, 60, 75, 90, 105, 120, 135, 150],
+    "Alignment Check": [15, 30, 45, 60, 75, 90, 105, 120, 135, 150, 165, 180]
+};
+
+let currentMaintFormattedText = "";
+
+function calculateMaintenance() {
+    const rawMileage = parseInt(document.getElementById('maint-mileage').value);
+    if (!rawMileage || rawMileage <= 0) return alert("Please enter a valid mileage.");
+
+    // Round up to nearest 5,000 mile interval
+    const targetInterval = Math.ceil(rawMileage / 5000) * 5000;
+    const targetK = targetInterval / 1000;
+
+    const transType = document.querySelector('input[name="trans-type"]:checked').value;
+    const dueServices = [];
+
+    // Check standard chart services
+    for (const [service, intervals] of Object.entries(maintenanceSchedule)) {
+        if (intervals.includes(targetK)) {
+            dueServices.push(service);
+        }
+    }
+
+    // Handle Transmission Service logic
+    if (transType === 'cvt' && targetK % 30 === 0) {
+        dueServices.push("Transmission Service (CVT)");
+    } else if (transType === '8/10spd' && targetK % 45 === 0) {
+        dueServices.push("Transmission Service (8/10spd)");
+    } else if (transType === 'standard' && targetK % 30 === 0) {
+        dueServices.push("Transmission Service");
+    }
+
+    // Render Output
+    const headerText = `Mileage Based Recommendations due at ${targetInterval.toLocaleString()}mi:`;
+    document.getElementById('maint-result-header').innerText = headerText;
+
+    const listContainer = document.getElementById('maint-services-list');
+    listContainer.innerHTML = dueServices.map(s => `<li class="flex items-center gap-2">• ${s}</li>`).join('');
+
+    // Format text string for Trello copy button
+    currentMaintFormattedText = `${headerText}\n` + dueServices.map(s => `- ${s}`).join('\n');
+
+    document.getElementById('maint-result-card').classList.remove('hidden');
+}
+
+function copyMaintToClipboard() {
+    if (!currentMaintFormattedText) return;
+    navigator.clipboard.writeText(currentMaintFormattedText);
+    const toast = document.getElementById('maint-toast');
+    toast.classList.remove('opacity-0');
+    setTimeout(() => toast.classList.add('opacity-0'), 2000);
 }
 
 /* -------------------------------------------
@@ -940,11 +1015,30 @@ function exportCSV() {
    APP INITIALIZATION
 ------------------------------------------- */
 window.onload = async () => {
-    // Fire up background fetches
+    const loader = document.getElementById('global-loader');
+    const progress = document.getElementById('loader-progress');
+
+    // Step 1: Repair Jobs
+    if (progress) progress.style.width = '25%';
     await fetchFromSheets();
+
+    // Step 2: Tools & Database
+    if (progress) progress.style.width = '50%';
     await fetchDatabase();
+
+    // Step 3: Timecard Configs
+    if (progress) progress.style.width = '75%';
     await fetchTimecardConfigsFromSheets();
-    
-    // Auto-load default tab
+
+    // Step 4: Render Default UI
+    if (progress) progress.style.width = '100%';
     await switchTab('repair'); 
+
+    // Smoothly fade out and remove loader
+    if (loader) {
+        setTimeout(() => {
+            loader.classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => loader.style.display = 'none', 500); 
+        }, 400); // Give the bar a tiny delay to visually hit 100%
+    }
 };
