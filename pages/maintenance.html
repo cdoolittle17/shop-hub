@@ -1,0 +1,62 @@
+<div class="max-w-2xl mx-auto flex flex-col gap-6 w-full">
+    <div class="glass bg-white/70 border border-slate-200 dark:bg-slate-800/70 dark:border-slate-700/50 p-6 rounded-xl shadow-sm text-center">
+        <h2 class="text-2xl font-black text-slate-800 dark:text-slate-100 mb-2">
+            <i class="fa-solid fa-calendar-check text-blue-500 mr-2"></i> Recommended Maintenance
+        </h2>
+        <p class="text-sm text-slate-500 mb-6">Enter current mileage to generate the next 5k interval recommendations.</p>
+        
+        <div class="space-y-5 text-left">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Current Mileage</label>
+                <div class="relative">
+                    <input type="number" id="maint-mileage" placeholder="e.g. 42300" step="500"
+                        class="w-full p-3 pl-10 rounded-lg shadow-inner border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:outline-none focus:border-blue-500 text-base font-bold text-slate-800 dark:text-slate-100">
+                    <i class="fa-solid fa-gauge absolute left-3.5 top-4 text-slate-400"></i>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Transmission Type</label>
+                <div class="grid grid-cols-3 gap-3">
+                    <label class="flex items-center justify-center p-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-800 transition">
+                        <input type="radio" name="trans-type" value="cvt" class="mr-2 accent-blue-600">
+                        <span class="text-sm font-bold">CVT (30k)</span>
+                    </label>
+                    <label class="flex items-center justify-center p-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-800 transition">
+                        <input type="radio" name="trans-type" value="8/10spd" class="mr-2 accent-blue-600">
+                        <span class="text-sm font-bold">8 / 10 Spd (45k)</span>
+                    </label>
+                    <label class="flex items-center justify-center p-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:bg-blue-50 dark:hover:bg-slate-800 transition">
+                        <input type="radio" name="trans-type" value="standard" checked class="mr-2 accent-blue-600">
+                        <span class="text-sm font-bold">Standard (30k)</span>
+                    </label>
+                </div>
+            </div>
+
+            <button onclick="calculateMaintenance()" 
+                class="w-full bg-blue-600 hover:bg-blue-500 text-white p-3.5 rounded-lg font-bold text-base shadow-lg transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-calculator"></i> Calculate Services
+            </button>
+        </div>
+    </div>
+
+    <!-- RESULT OUTPUT CARD -->
+    <div id="maint-result-card" class="hidden glass bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 p-6 rounded-xl shadow-lg transition-all duration-300">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center border-b border-slate-200 dark:border-slate-700 pb-3 mb-4 gap-3">
+            <h3 class="font-bold text-lg text-blue-600 dark:text-blue-400" id="maint-result-header">
+                Mileage Based Recommendations due at 45,000mi:
+            </h3>
+            <div class="flex items-center gap-2">
+                <span id="maint-toast" class="text-xs font-semibold text-emerald-500 opacity-0 transition-opacity">Copied!</span>
+                <button onclick="copyMaintToClipboard()" 
+                    class="bg-emerald-600 hover:bg-emerald-500 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition shadow flex items-center gap-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-copy"></i> Copy for Trello
+                </button>
+            </div>
+        </div>
+
+        <ul id="maint-services-list" class="space-y-2 mb-2 font-mono text-sm text-slate-800 dark:text-slate-200">
+            <!-- Dynamic services injected here -->
+        </ul>
+    </div>
+</div>
