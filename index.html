@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Shop Hub: Repair Orders, Tool Tracker & Timeclock</title>
   
-  <!-- Dark Mode Initialization & Save Logic -->
+  <!-- Theme & Contrast Initialization -->
   <script>
+    // 1. Dark Mode Logic
     if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       document.documentElement.classList.add('dark');
     } else {
@@ -21,6 +22,23 @@
         document.documentElement.classList.add('dark');
         localStorage.setItem('theme', 'dark');
       }
+    }
+
+    // 2. Contrast Logic
+    const savedContrast = localStorage.getItem('app-contrast') || '100';
+    const contrastStyle = document.createElement('style');
+    contrastStyle.id = 'dynamic-contrast';
+    contrastStyle.innerHTML = `#contrast-overlay { backdrop-filter: contrast(${savedContrast}%); -webkit-backdrop-filter: contrast(${savedContrast}%); }`;
+    document.head.appendChild(contrastStyle);
+
+    function changeContrast(value) {
+      const style = document.getElementById('dynamic-contrast');
+      if (style) {
+        style.innerHTML = `#contrast-overlay { backdrop-filter: contrast(${value}%); -webkit-backdrop-filter: contrast(${value}%); }`;
+      }
+      localStorage.setItem('app-contrast', value);
+      const display = document.getElementById('contrastDisplay');
+      if (display) display.innerText = value + '%';
     }
   </script>
 
@@ -42,6 +60,9 @@
 </head>
 <body class="p-4 md:p-8 min-h-screen flex flex-col bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 transition-colors">
 
+  <!-- GLOBAL CONTRAST OVERLAY (Invisible filter layer) -->
+  <div id="contrast-overlay" class="fixed inset-0 pointer-events-none z-[9999]"></div>
+
   <!-- GLOBAL LOADING OVERLAY -->
   <div id="global-loader" class="fixed inset-0 bg-slate-50 dark:bg-slate-900 z-[100] flex flex-col items-center justify-center transition-opacity duration-500">
     <i class="fa-solid fa-warehouse text-5xl text-blue-600 dark:text-blue-400 mb-4 animate-pulse"></i>
@@ -52,7 +73,7 @@
   </div>
 
   <!-- TOP BAR -->
-  <header class="max-w-6xl mx-auto w-full mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+  <header class="max-w-6xl mx-auto w-full mb-6 flex flex-col sm:flex-row justify-between items-center gap-4 relative z-10">
     <div>
       <h1 class="text-2xl font-bold text-blue-600 dark:text-blue-400"><i class="fa-solid fa-warehouse mr-2"></i> Shop Operations Hub</h1>
       <p class="text-xs text-slate-500 dark:text-slate-400">Manage repair orders, track shop tools, and sync employee timecards.</p>
@@ -69,7 +90,7 @@
   </header>
 
 <!-- APP TOGGLE SWITCH -->
-  <div class="max-w-6xl mx-auto w-full mb-8 bg-slate-200 dark:bg-slate-800 p-1.5 rounded-xl flex shadow-inner border border-slate-300 dark:border-slate-700 overflow-x-auto">
+  <div class="max-w-6xl mx-auto w-full mb-8 bg-slate-200 dark:bg-slate-800 p-1.5 rounded-xl flex shadow-inner border border-slate-300 dark:border-slate-700 overflow-x-auto relative z-10">
     <button onclick="switchTab('repair')" id="btn-tab-repair" class="flex-1 min-w-[80px] py-3 text-center text-sm md:text-base font-bold rounded-lg text-slate-500 dark:text-slate-400 transition-all hover:bg-slate-300/50 dark:hover:bg-slate-700/50">
         <i class="fa-solid fa-clipboard-list mr-2 hidden sm:inline"></i> Jobs
     </button>
@@ -88,7 +109,7 @@
   </div>
 
   <!-- DYNAMIC CONTENT CONTAINER -->
-  <div id="app-content" class="max-w-6xl mx-auto w-full flex-1 relative flex flex-col">
+  <div id="app-content" class="max-w-6xl mx-auto w-full flex-1 relative flex flex-col z-10">
     <!-- Pages get injected here -->
   </div>
 
@@ -96,16 +117,28 @@
   <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
     <div class="glass bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 rounded-xl max-w-lg w-full shadow-2xl space-y-4">
       <h2 class="text-lg font-bold text-blue-600 dark:text-blue-400"><i class="fa-solid fa-gear mr-2"></i> Application Settings</h2>
+      
+      <!-- CONTRAST SETTING -->
+      <div class="border-b border-slate-200 dark:border-slate-700 pb-4">
+        <div class="flex justify-between items-center mb-2">
+          <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Display Contrast</label>
+          <span id="contrastDisplay" class="text-xs font-bold text-blue-600 dark:text-blue-400">100%</span>
+        </div>
+        <input type="range" id="contrastSlider" min="50" max="150" value="100" oninput="changeContrast(this.value)" class="w-full accent-blue-600">
+      </div>
+
+      <!-- TIMECARD SETTINGS -->
       <div>
         <div class="flex justify-between items-center mb-2">
-          <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Configured Timecards (Synced from Google Sheets):</label>
+          <label class="text-xs font-bold text-slate-700 dark:text-slate-300">Configured Timecards:</label>
           <button onclick="addTimecardConfigRow()" class="text-xs text-blue-600 font-bold hover:underline">+ Add Card</button>
         </div>
         <div id="timecardConfigsList" class="space-y-2 max-h-40 overflow-y-auto pr-1 border border-slate-200 dark:border-slate-700 p-3 rounded-lg bg-slate-50 dark:bg-slate-900"></div>
       </div>
+
       <div class="flex justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-        <button onclick="closeSettingsModal()" class="px-4 py-2 text-sm text-slate-500 font-semibold">Cancel</button>
-        <button onclick="saveSettings()" class="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-bold shadow hover:bg-blue-500">Save Settings</button>
+        <button onclick="closeSettingsModal()" class="px-4 py-2 text-sm text-slate-500 font-semibold hover:text-slate-700">Cancel</button>
+        <button onclick="saveSettings()" class="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-bold shadow hover:bg-blue-500 transition">Save Settings</button>
       </div>
     </div>
   </div>
