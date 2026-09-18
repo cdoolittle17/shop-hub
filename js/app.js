@@ -27,8 +27,9 @@ async function switchTab(tabName) {
         // 3. Trigger context-specific renders after HTML loads
         if (tabName === 'repair') {
             renderRepairCategories();
+        } else if (tabName === 'parts') {
+            renderPartsBoard();
         } else if (tabName === 'maintenance') {
-            // Focus on mileage input when tab opens
             setTimeout(() => {
                 const el = document.getElementById('maint-mileage');
                 if (el) el.focus();
@@ -1017,6 +1018,196 @@ function exportCSV() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+/* -------------------------------------------
+   PARTS MANAGEMENT & RECALL LOGIC
+------------------------------------------- */
+let partsData = JSON.parse(localStorage.getItem('shopPartsData') || '[]');
+
+function savePartsToStorage() {
+    localStorage.setItem('shopPartsData', JSON.stringify(partsData));
+}
+
+function checkAndAutoArchiveParts() {
+    const NOW = Date.now();
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+    let updated = false;
+
+    partsData.forEach(p => {
+        if ((p.status === 'Installed' || p.status === 'Returned') && p.movedToTerminalAt) {
+            if (NOW - p.movedToTerminalAt >= TWENTY_FOUR_HOURS) {
+                p.archived = true;
+                updated = true;
+            }
+        }
+    });
+
+    if (updated) savePartsToStorage();
+}
+
+function renderPartsBoard() {
+    checkAndAutoArchiveParts();
+    const stages = ['NTO', 'Ordered', 'Arrived', 'Installed', 'NTR', 'Returned'];
+    
+    stages.forEach(stage => {
+        const container = document.getElementById(`col-${stage}`);
+        const countSpan = document.getElementById(`cnt-${stage}`);
+        if (!container) return;
+
+        const activeInStage = partsData.filter(p => p.status === stage && !p.archived);
+        if (countSpan) countSpan.innerText = activeInStage.length;
+
+        container.innerHTML = activeInStage.map(p => `
+            <div id="part-${p.id}" draggable="true" ondragstart="handlePartDragStart(event, '${p.id}')"
+                 class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2.5 rounded-lg shadow-sm cursor-grab active:cursor-grabbing hover:border-blue-500 transition-all">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300 font-mono font-bold text-[10px] px-1.5 py-0.5 rounded">Tag #${p.tag}</span>
+                    <button onclick="deletePartCard('${p.id}')" class="text-slate-400 hover:text-red-500 text-[10px]"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">${p.year} ${p.make} ${p.model}</div>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-tight">${p.desc}</p>
+            </div>
+        `).join('');
+    });
+}
+
+function handlePartDragStart(e, partId) {
+    e.dataTransfer.setData('text/plain', partId);
+}
+function allowPartDrop(e) { e.preventDefault(); }
+function handlePartDrop(e, targetStage) {
+    e.preventDefault();
+    const partId = e.dataTransfer.getData('text/plain');
+    const part = partsData.find(p => p.id === partId);
+    if (!part) return;
+
+    part.status = targetStage;
+    if (targetStage === 'Installed' || targetStage === 'Returned') {
+        part.movedToTerminalAt = Date.now();
+    } else {
+        delete part.movedToTerminalAt;
+    }
+
+    savePartsToStorage();
+    renderPartsBoard();
+}
+
+function openAddPartModal() {
+    const modal = document.getElementById('addPartModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+}
+
+function closeAddPartModal() {
+    const modal = document.getElementById('addPartModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+function saveNewPartRequest() {
+    const year = document.getElementById('part-year').value.trim();
+    const make = document.getElementById('part-make').value.trim();
+    const model = document.getElementById('part-model').value.trim();
+    const tag = document.getElementById('part-tag').value.trim();
+    const desc = document.getElementById('part-desc').value.trim();
+
+    if (!tag || !desc) return alert("Tag # and Description are required.");
+
+    const newPart = {
+        id: 'part_' + Date.now(),
+        year: year || 'N/A',
+        make: make || '',
+        model: model || '',
+        tag: tag,
+        desc: desc,
+        status: 'NTO',
+        createdAt: Date.now(),
+        archived: false
+    };
+
+    partsData.push(newPart);
+    savePartsToStorage();
+    renderPartsBoard();
+    closeAddPartModal();
+
+    document.getElementById('part-year').value = '';
+    document.getElementById('part-make').value = '';
+    document.getElementById('part-model').value = '';
+    document.getElementById('part-tag').value = '';
+    document.getElementById('part-desc').value = '';
+}
+
+function deletePartCard(id) {
+    if (!confirm("Delete this part card?")) return;
+    partsData = partsData.filter(p => p.id !== id);
+    savePartsToStorage();
+    renderPartsBoard();
+}
+
+function togglePartsView(view) {
+    const board = document.getElementById('parts-board-view');
+    const recall = document.getElementById('parts-recall-view');
+    const btnBoard = document.getElementById('btn-parts-board');
+    const btnRecall = document.getElementById('btn-parts-recall');
+
+    if (view === 'board') {
+        board.classList.remove('hidden');
+        recall.classList.add('hidden');
+        btnBoard.className = "bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow";
+        btnRecall.className = "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold shadow";
+        renderPartsBoard();
+    } else {
+        board.classList.add('hidden');
+        recall.classList.remove('hidden');
+        btnRecall.className = "bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow";
+        btnBoard.className = "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold shadow";
+        renderRecallParts();
+    }
+}
+
+function renderRecallParts() {
+    checkAndAutoArchiveParts();
+    const query = (document.getElementById('recallSearchInput').value || '').toLowerCase();
+    const container = document.getElementById('recall-list-container');
+    
+    const archived = partsData.filter(p => p.archived && (
+        p.tag.toLowerCase().includes(query) ||
+        p.desc.toLowerCase().includes(query) ||
+        `${p.year} ${p.make} ${p.model}`.toLowerCase().includes(query)
+    ));
+
+    if (archived.length === 0) {
+        container.innerHTML = `<div class="text-center text-slate-400 py-8 text-xs">No archived parts found matching search.</div>`;
+        return;
+    }
+
+    container.innerHTML = archived.map(p => `
+        <div class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-lg flex justify-between items-center text-xs">
+            <div>
+                <span class="font-mono font-bold bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded text-blue-600 dark:text-blue-400 mr-2">Tag #${p.tag}</span>
+                <strong class="text-slate-700 dark:text-slate-200">${p.year} ${p.make} ${p.model}</strong>
+                <span class="text-slate-500 dark:text-slate-400 block mt-1">${p.desc}</span>
+            </div>
+            <div class="text-right">
+                <span class="px-2 py-0.5 rounded font-bold text-[10px] ${p.status === 'Installed' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}">${p.status}</span>
+                <button onclick="unarchivePart('${p.id}')" class="block text-[10px] text-blue-500 hover:underline mt-1 font-semibold">Restore to Board</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function unarchivePart(id) {
+    const part = partsData.find(p => p.id === id);
+    if (!part) return;
+    part.archived = false;
+    delete part.movedToTerminalAt;
+    savePartsToStorage();
+    renderRecallParts();
 }
 
 /* -------------------------------------------
