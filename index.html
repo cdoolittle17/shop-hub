@@ -90,9 +90,12 @@
   </header>
 
 <!-- APP TOGGLE SWITCH -->
-  <div class="max-w-6xl mx-auto w-full mb-8 bg-slate-200 dark:bg-slate-800 p-1.5 rounded-xl flex shadow-inner border border-slate-300 dark:border-slate-700 overflow-x-auto relative z-10">
+  <div class="max-w-6xl mx-auto w-full mb-8 bg-slate-200 dark:bg-slate-800 p-1.5 rounded-xl flex shadow-inner border border-slate-300 dark:border-slate-700 overflow-x-auto">
     <button onclick="switchTab('repair')" id="btn-tab-repair" class="flex-1 min-w-[80px] py-3 text-center text-sm md:text-base font-bold rounded-lg text-slate-500 dark:text-slate-400 transition-all hover:bg-slate-300/50 dark:hover:bg-slate-700/50">
         <i class="fa-solid fa-clipboard-list mr-2 hidden sm:inline"></i> Jobs
+    </button>
+    <button onclick="switchTab('parts')" id="btn-tab-parts" class="flex-1 min-w-[90px] py-3 text-center text-sm md:text-base font-bold rounded-lg text-slate-500 dark:text-slate-400 transition-all hover:bg-slate-300/50 dark:hover:bg-slate-700/50">
+        <i class="fa-solid fa-boxes-packing mr-2 hidden sm:inline"></i> Parts
     </button>
     <button onclick="switchTab('maintenance')" id="btn-tab-maintenance" class="flex-1 min-w-[120px] py-3 text-center text-sm md:text-base font-bold rounded-lg text-slate-500 dark:text-slate-400 transition-all hover:bg-slate-300/50 dark:hover:bg-slate-700/50">
         <i class="fa-solid fa-calendar-check mr-2 hidden sm:inline"></i> Maint.
