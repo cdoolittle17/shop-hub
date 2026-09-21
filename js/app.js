@@ -44,13 +44,10 @@ async function switchTab(tabName) {
             const empSelect = document.getElementById('filterEmp');
             const addShiftEmpSelect = document.getElementById('addShiftEmp');
             
-            // Default employee list fallback
+            // Force combine hardcoded names with any configured names
             const defaultEmployees = ["Caleb", "Pickles", "Jason", "Jonathan", "Martin"];
-            
-            // Build list from settings, or fall back to defaults
-            const activeList = (configuredCards && configuredCards.length > 0) 
-                ? configuredCards.map(c => c.employee) 
-                : defaultEmployees;
+            const configEmployees = configuredCards.map(c => c.employee);
+            const activeList = [...new Set([...defaultEmployees, ...configEmployees])];
 
             if (empSelect) {
                 empSelect.innerHTML = '<option value="All">All Employees</option>' + activeList.map(e => `<option value="${e}">${e}</option>`).join('');
@@ -766,11 +763,17 @@ async function fetchTrelloTimecards() {
 
     document.getElementById('viewFilters').classList.remove('hidden');
     document.getElementById('viewFilters').classList.add('flex');
-    document.getElementById('filterEmp').innerHTML = '<option value="All">All Employees</option>' + configuredCards.map(c => `<option value="${c.employee}">${c.employee}</option>`).join('');
+    
+    // Force combine hardcoded names with any configured names for the dropdowns
+    const defaultEmployees = ["Caleb", "Pickles", "Jason", "Jonathan", "Martin"];
+    const configEmployees = configuredCards.map(c => c.employee);
+    const activeList = [...new Set([...defaultEmployees, ...configEmployees])];
+
+    document.getElementById('filterEmp').innerHTML = '<option value="All">All Employees</option>' + activeList.map(c => `<option value="${c}">${c}</option>`).join('');
 
     document.getElementById('addShiftBox').classList.remove('hidden');
     document.getElementById('addShiftBox').classList.add('flex');
-    document.getElementById('addShiftEmp').innerHTML = configuredCards.map(c => `<option value="${c.employee}">${c.employee}</option>`).join('');
+    document.getElementById('addShiftEmp').innerHTML = activeList.map(c => `<option value="${c}">${c}</option>`).join('');
 
     renderTimecardSummaries();
 }
