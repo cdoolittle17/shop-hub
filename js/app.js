@@ -42,15 +42,28 @@ async function switchTab(tabName) {
             populateRackDropdown();
         } else if (tabName === 'time') {
             const empSelect = document.getElementById('filterEmp');
-            if (empSelect && configuredCards.length > 0) {
-                empSelect.innerHTML = '<option value="All">All Employees</option>' + configuredCards.map(c => `<option value="${c.employee}">${c.employee}</option>`).join('');
-                document.getElementById('addShiftEmp').innerHTML = configuredCards.map(c => `<option value="${c.employee}">${c.employee}</option>`).join('');
+            const addShiftEmpSelect = document.getElementById('addShiftEmp');
+            
+            // Default employee list fallback
+            const defaultEmployees = ["Caleb", "Pickles", "Jason", "Jonathan", "Martin"];
+            
+            // Build list from settings, or fall back to defaults
+            const activeList = (configuredCards && configuredCards.length > 0) 
+                ? configuredCards.map(c => c.employee) 
+                : defaultEmployees;
+
+            if (empSelect) {
+                empSelect.innerHTML = '<option value="All">All Employees</option>' + activeList.map(e => `<option value="${e}">${e}</option>`).join('');
             }
+            if (addShiftEmpSelect) {
+                addShiftEmpSelect.innerHTML = activeList.map(e => `<option value="${e}">${e}</option>`).join('');
+            }
+
             if (parsedTimecardsData && parsedTimecardsData.length > 0) {
-                document.getElementById('viewFilters').classList.remove('hidden');
-                document.getElementById('viewFilters').classList.add('flex');
-                document.getElementById('addShiftBox').classList.remove('hidden');
-                document.getElementById('addShiftBox').classList.add('flex');
+                document.getElementById('viewFilters')?.classList.remove('hidden');
+                document.getElementById('viewFilters')?.classList.add('flex');
+                document.getElementById('addShiftBox')?.classList.remove('hidden');
+                document.getElementById('addShiftBox')?.classList.add('flex');
                 renderTimecardSummaries();
             }
         }
