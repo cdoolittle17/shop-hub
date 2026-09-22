@@ -1,0 +1,75 @@
+<div class="w-full flex flex-col gap-6 max-w-4xl mx-auto">
+  
+  <!-- SEARCH BAR & UPLOAD HEADER -->
+  <div class="glass bg-white/70 dark:bg-slate-800/70 p-6 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col gap-4">
+    <div class="flex justify-between items-start sm:items-center flex-col sm:flex-row gap-4">
+      <div>
+        <h2 class="text-2xl font-black text-slate-800 dark:text-slate-100">
+          <i class="fa-solid fa-book-open-reader text-blue-500 mr-2"></i> Shop Docs & AI Help
+        </h2>
+        <p class="text-sm text-slate-500">Search indexed MSDS sheets, manuals, and technical guides.</p>
+      </div>
+      <button onclick="openUploadDocModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md transition flex items-center gap-2 whitespace-nowrap">
+        <i class="fa-solid fa-cloud-arrow-up"></i> Upload Document
+      </button>
+    </div>
+
+    <div class="relative w-full mt-2">
+      <input type="text" id="helpSearchInput" placeholder="Search for 'Brake Cleaner MSDS' or '4 Post Lift Maintenance'..." 
+             class="w-full p-4 pl-12 rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-bold focus:border-blue-500 focus:outline-none shadow-inner text-lg">
+      <i class="fa-solid fa-magnifying-glass absolute left-4 top-5 text-slate-400 text-xl"></i>
+      <button onclick="executeHelpSearch()" class="absolute right-3 top-2.5 bg-blue-600 text-white px-4 py-1.5 rounded-lg font-bold hover:bg-blue-500 transition">Search</button>
+    </div>
+  </div>
+
+  <!-- RESULTS AREA -->
+  <div id="help-results-container" class="hidden space-y-4">
+    <!-- AI Summaries will inject here -->
+  </div>
+
+  <!-- DEEP DIG AREA (Option B) -->
+  <div id="deep-dig-container" class="hidden glass bg-blue-50 dark:bg-blue-900/20 p-6 rounded-xl border border-blue-200 dark:border-blue-800 mt-4">
+    <h3 class="font-bold text-blue-800 dark:text-blue-300 mb-2"><i class="fa-solid fa-robot mr-2"></i> Didn't find what you need?</h3>
+    <p class="text-xs text-blue-600 dark:text-blue-400 mb-4">Ask a specific question and the AI will do a "Deep Dig" reading of the raw PDFs on the fly to find your exact answer.</p>
+    
+    <div class="flex gap-2">
+      <input type="text" id="deepDigInput" placeholder="e.g., 'Where are the grease zerks located?'" class="flex-1 p-3 rounded-lg border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-900 text-sm focus:outline-none">
+      <button onclick="executeDeepDig()" class="bg-blue-700 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md transition whitespace-nowrap">
+        Deep Dig <i class="fa-solid fa-arrow-turn-down ml-1"></i>
+      </button>
+    </div>
+    <div id="deep-dig-loading" class="hidden text-blue-500 text-sm font-bold mt-4 animate-pulse">
+      <i class="fa-solid fa-microchip fa-spin mr-2"></i> Reading raw documents, hold on...
+    </div>
+    <div id="deep-dig-answer" class="hidden mt-4 p-4 bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-700 rounded-lg text-sm text-slate-700 dark:text-slate-200">
+      <!-- Deep Dig Response Injects Here -->
+    </div>
+  </div>
+
+</div>
+
+<!-- UPLOAD MODAL -->
+<div id="uploadDocModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+  <div class="glass bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 rounded-xl max-w-md w-full shadow-2xl space-y-4">
+    <h2 class="text-lg font-bold text-blue-600 dark:text-blue-400"><i class="fa-solid fa-file-pdf mr-2"></i> Add New Document</h2>
+    <p class="text-xs text-slate-500">Upload a PDF. The AI will read it, extract key maintenance/safety data, and index the summary for fast searching.</p>
+    
+    <div>
+      <label class="text-xs font-bold text-slate-500 block mb-1">Document Title</label>
+      <input type="text" id="uploadDocTitle" placeholder="e.g. Atlas 412A Manual" class="w-full bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 p-2 rounded text-sm font-bold">
+    </div>
+    
+    <div class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-6 text-center bg-slate-50 dark:bg-slate-900/50 hover:bg-slate-100 dark:hover:bg-slate-900 transition cursor-pointer">
+      <input type="file" id="uploadDocFile" accept="application/pdf" class="hidden">
+      <label for="uploadDocFile" class="cursor-pointer">
+        <i class="fa-regular fa-file-pdf text-4xl text-rose-500 mb-2"></i>
+        <div class="text-sm font-bold text-slate-700 dark:text-slate-300" id="uploadDocName">Click to select PDF</div>
+      </label>
+    </div>
+
+    <div class="flex justify-end gap-3 pt-2">
+      <button onclick="closeUploadDocModal()" class="px-4 py-2 text-sm text-slate-500 font-semibold hover:text-slate-700">Cancel</button>
+      <button onclick="processNewDocument()" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg text-sm font-bold shadow transition">Upload & Index</button>
+    </div>
+  </div>
+</div>
