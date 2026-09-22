@@ -29,6 +29,12 @@ async function switchTab(tabName) {
             renderRepairCategories();
         } else if (tabName === 'parts') {
             renderPartsBoard();
+} else if (tabName === 'help') {
+            renderHelpDocs();
+            setTimeout(() => {
+                const searchEl = document.getElementById('helpSearchInput');
+                if (searchEl) searchEl.focus();
+            }, 100);
         } else if (tabName === 'maintenance') {
             setTimeout(() => {
                 const el = document.getElementById('maint-mileage');
@@ -1227,6 +1233,187 @@ function unarchivePart(id) {
 }
 
 /* -------------------------------------------
+   AI HELP & DOCS LOGIC
+------------------------------------------- */
+let shopDocs = [];
+let currentDeepDigFileId = null;
+
+async function fetchShopDocs() {
+    try {
+        const res = await fetch(GOOGLE_SCRIPT_URL + "?action=getDocs");
+        const data = await res.json();
+        shopDocs = Array.isArray(data) ? data : [];
+    } catch(e) {
+        console.warn("Failed to fetch shop docs");
+    }
+}
+
+function renderHelpDocs() {
+    const container = document.getElementById('help-results-container');
+    const searchInput = document.getElementById('helpSearchInput');
+    if (!container || !searchInput) return;
+    
+    const searchStr = searchInput.value.toLowerCase().trim();
+    container.classList.remove('hidden');
+
+    const filtered = shopDocs.filter(d => 
+        (d.title && d.title.toLowerCase().includes(searchStr)) || 
+        (d.summary && d.summary.toLowerCase().includes(searchStr))
+    );
+
+    if (filtered.length === 0) {
+        container.innerHTML = `<div class="text-center text-slate-400 py-8 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">No documents found matching "${searchStr}". Upload a new PDF to get started!</div>`;
+        document.getElementById('deep-dig-container').classList.add('hidden');
+        return;
+    }
+
+    container.innerHTML = filtered.map(d => `
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 rounded-xl shadow-sm">
+            <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4 border-b border-slate-100 dark:border-slate-700 pb-4">
+                <h3 class="font-bold text-lg text-blue-600 dark:text-blue-400">${d.title}</h3>
+                <a href="${d.fileUrl}" target="_blank" class="bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm whitespace-nowrap">
+                    <i class="fa-solid fa-up-right-from-square mr-1"></i> View Raw PDF
+                </a>
+            </div>
+            <div class="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 whitespace-pre-wrap">${d.summary}</div>
+            <div class="mt-5 pt-4 border-t border-slate-100 dark:border-slate-700 flex justify-end">
+                <button onclick="prepDeepDig('${d.fileId}', '${d.title.replace(/'/g, "\\'")}')" class="text-sm font-bold text-blue-600 hover:text-blue-500 dark:text-blue-400 transition bg-blue-50 dark:bg-blue-900/30 px-4 py-2 rounded-lg">
+                    <i class="fa-solid fa-robot mr-1"></i> Deep Dig this Document
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function executeHelpSearch() {
+    renderHelpDocs();
+}
+
+// Live search listener
+document.addEventListener('keyup', (e) => {
+    if (e.target && e.target.id === 'helpSearchInput') {
+        executeHelpSearch();
+    }
+});
+
+// Update the file input label dynamically when a PDF is selected
+document.addEventListener('change', (e) => {
+    if (e.target && e.target.id === 'uploadDocFile') {
+        const fileName = e.target.files[0] ? e.target.files[0].name : "Click to select PDF";
+        document.getElementById('uploadDocName').innerText = fileName;
+    }
+});
+
+function openUploadDocModal() {
+    document.getElementById('uploadDocModal').classList.remove('hidden');
+    document.getElementById('uploadDocModal').classList.add('flex');
+    document.getElementById('uploadDocTitle').value = '';
+    document.getElementById('uploadDocFile').value = '';
+    document.getElementById('uploadDocName').innerText = 'Click to select PDF';
+}
+
+function closeUploadDocModal() {
+    document.getElementById('uploadDocModal').classList.add('hidden');
+    document.getElementById('uploadDocModal').classList.remove('flex');
+}
+
+async function processNewDocument() {
+    const title = document.getElementById('uploadDocTitle').value.trim();
+    const fileInput = document.getElementById('uploadDocFile');
+
+    if (!title) return alert("Please enter a document title.");
+    if (!fileInput.files || fileInput.files.length === 0) return alert("Please select a PDF file.");
+
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+
+    const btn = document.querySelector('#uploadDocModal button:nth-child(2)');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Reading PDF...';
+    btn.disabled = true;
+
+    reader.onload = async function(e) {
+        // Strip the data URL prefix to get raw base64
+        const base64Data = e.target.result.split(',')[1];
+
+        try {
+            const res = await fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify({
+                    action: "uploadDoc",
+                    title: title,
+                    filename: file.name,
+                    fileData: base64Data
+                })
+            });
+            const data = await res.json();
+            
+            if (data.status === "success") {
+                updateSyncStatus("Document Indexed!");
+                closeUploadDocModal();
+                await fetchShopDocs(); // Pull the fresh list from Sheets
+                renderHelpDocs(); // Update the UI
+            } else {
+                alert("Upload failed.");
+            }
+        } catch(err) {
+            alert("Error uploading document: " + err.message);
+        }
+        
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    };
+    
+    reader.readAsDataURL(file);
+}
+
+function prepDeepDig(fileId, title) {
+    currentDeepDigFileId = fileId;
+    const container = document.getElementById('deep-dig-container');
+    container.classList.remove('hidden');
+    
+    const input = document.getElementById('deepDigInput');
+    input.placeholder = `Ask a question specifically about the ${title}...`;
+    input.value = '';
+    input.focus();
+    
+    document.getElementById('deep-dig-answer').classList.add('hidden');
+    container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function executeDeepDig() {
+    const question = document.getElementById('deepDigInput').value.trim();
+    if (!question || !currentDeepDigFileId) return alert("Please enter a question.");
+
+    const loadingDiv = document.getElementById('deep-dig-loading');
+    const answerDiv = document.getElementById('deep-dig-answer');
+    
+    loadingDiv.classList.remove('hidden');
+    answerDiv.classList.add('hidden');
+
+    try {
+        const res = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({
+                action: "deepDig",
+                question: question,
+                fileId: currentDeepDigFileId
+            })
+        });
+        const data = await res.json();
+        
+        loadingDiv.classList.add('hidden');
+        answerDiv.innerHTML = `<strong class="text-blue-600 dark:text-blue-400 block mb-2"><i class="fa-solid fa-check mr-2"></i> AI Response:</strong><div class="whitespace-pre-wrap leading-relaxed">${data.answer || "No response received."}</div>`;
+        answerDiv.classList.remove('hidden');
+    } catch(e) {
+        loadingDiv.classList.add('hidden');
+        alert("Error during Deep Dig: " + e.message);
+    }
+}
+
+/* -------------------------------------------
    APP INITIALIZATION
 ------------------------------------------- */
 window.onload = async () => {
@@ -1234,18 +1421,22 @@ window.onload = async () => {
     const progress = document.getElementById('loader-progress');
 
     // Step 1: Repair Jobs
-    if (progress) progress.style.width = '25%';
+    if (progress) progress.style.width = '20%';
     await fetchFromSheets();
 
     // Step 2: Tools & Database
-    if (progress) progress.style.width = '50%';
+    if (progress) progress.style.width = '40%';
     await fetchDatabase();
 
     // Step 3: Timecard Configs
-    if (progress) progress.style.width = '75%';
+    if (progress) progress.style.width = '60%';
     await fetchTimecardConfigsFromSheets();
 
-    // Step 4: Render Default UI
+    // Step 4: AI Docs Library
+    if (progress) progress.style.width = '80%';
+    await fetchShopDocs();
+
+    // Step 5: Render Default UI
     if (progress) progress.style.width = '100%';
     await switchTab('repair'); 
 
@@ -1254,6 +1445,6 @@ window.onload = async () => {
         setTimeout(() => {
             loader.classList.add('opacity-0', 'pointer-events-none');
             setTimeout(() => loader.style.display = 'none', 500); 
-        }, 400); // Give the bar a tiny delay to visually hit 100%
+        }, 400); 
     }
 };
