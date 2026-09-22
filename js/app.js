@@ -46,7 +46,14 @@ async function switchTab(tabName) {
             performToolSearch();
             renderRacksList();
             populateRackDropdown();
-        } else if (tabName === 'time') {
+} else if (tabName === 'time') {
+            // Auto-select the last chosen employee for this specific device
+            const timeclockSelect = document.getElementById('timeclockEmployee');
+            const savedEmp = localStorage.getItem('lastSelectedEmployee');
+            if (timeclockSelect && savedEmp) {
+                timeclockSelect.value = savedEmp;
+            }
+
             const empSelect = document.getElementById('filterEmp');
             const addShiftEmpSelect = document.getElementById('addShiftEmp');
             
