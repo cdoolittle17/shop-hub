@@ -29,10 +29,10 @@ async function switchTab(tabName) {
             renderRepairCategories();
         } else if (tabName === 'parts') {
             renderPartsBoard();
-} else if (tabName === 'help') {
+        } else if (tabName === 'help') {
             renderHelpDocs();
             setTimeout(() => {
-                const searchEl = document.getElementById('helpSearchInput');
+                const searchEl = document.getElementById('aiQueryInput');
                 if (searchEl) searchEl.focus();
             }, 100);
         } else if (tabName === 'maintenance') {
@@ -46,7 +46,7 @@ async function switchTab(tabName) {
             performToolSearch();
             renderRacksList();
             populateRackDropdown();
-} else if (tabName === 'time') {
+        } else if (tabName === 'time') {
             // Auto-select the last chosen employee for this specific device
             const timeclockSelect = document.getElementById('timeclockEmployee');
             const savedEmp = localStorage.getItem('lastSelectedEmployee');
@@ -93,6 +93,7 @@ function updateSyncStatus(msg, isError = false) {
    GLOBAL DATA VARIABLES & CONSTANTS
 ------------------------------------------- */
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwUnIEHNpyL1onu52p5lwvX27L1jhgvscQlpnMb6NIDcWaikJu111lFz8xkuAlROePqLw/exec";
+const GEMINI_BROWSER_KEY = "AQ.Ab8RN6Kotaag6DpmqbFZqcG0iEOtW8ZHWQL_apXY_FM52MvxOQ"; // Your Gemini Key
 localStorage.removeItem('shopJobs'); // Clear stale jobs
 
 let jobsData = [];
@@ -992,8 +993,8 @@ function renderTimecardSummaries() {
                                             <div><span class="font-bold">${p.type}</span> <span class="text-slate-400 block truncate w-32" title="${p.text}">"${p.text}"</span></div>
                                             <div class="flex items-center gap-1.5">
                                                 <span class="font-mono mr-2">${p.timeStr}</span>
-                                                <button onclick="openEditPunch(${empIdx}, '${dateStr}', ${punchIdx})" class="bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded text-[10px] font-bold">Edit</button>
-                                                <button onclick="removePunchFromReport(${empIdx}, '${dateStr}', ${punchIdx})" class="bg-red-100 text-red-600 px-2 py-1 rounded text-[10px] font-bold">Del</button>
+                                                <button onclick="openEditPunch(${empIdx}, '${dateStr}',${punchIdx})" class="bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded text-[10px] font-bold">Edit</button>
+                                                <button onclick="removePunchFromReport(${empIdx}, '${dateStr}',${punchIdx})" class="bg-red-100 text-red-600 px-2 py-1 rounded text-[10px] font-bold">Del</button>
                                             </div>
                                         </div>
                                     `).join('')}
@@ -1240,108 +1241,181 @@ function unarchivePart(id) {
 }
 
 /* -------------------------------------------
-   AI HELP & DOCS LOGIC
+   AI HELP & JSON LIBRARY LOGIC
 ------------------------------------------- */
-let shopDocs = [];
-let currentDeepDigFileId = null;
+let docsLibrary = [];
+let pdfDriveLinks = JSON.parse(localStorage.getItem('pdfDriveLinks') || '{}');
 
 async function fetchShopDocs() {
     try {
-        const res = await fetch(GOOGLE_SCRIPT_URL + "?action=getDocs");
-        const data = await res.json();
-        shopDocs = Array.isArray(data) ? data : [];
+        // Fetch docs_library.json from js/ folder
+        const res = await fetch('js/docs_library.json');
+        if (res.ok) {
+            docsLibrary = await res.json();
+            // Merge any saved Google Drive PDF links from local storage
+            docsLibrary.forEach(doc => {
+                if (pdfDriveLinks[doc.title]) {
+                    doc.fileUrl = pdfDriveLinks[doc.title];
+                }
+            });
+        }
     } catch(e) {
-        console.warn("Failed to fetch shop docs");
+        console.warn("Could not load js/docs_library.json");
     }
 }
 
 function renderHelpDocs() {
-    const container = document.getElementById('help-results-container');
-    const searchInput = document.getElementById('helpSearchInput');
-    if (!container || !searchInput) return;
+    const container = document.getElementById('ai-query-results');
+    if (!container) return;
     
-    const searchStr = searchInput.value.toLowerCase().trim();
-    container.classList.remove('hidden');
-
-    const filtered = shopDocs.filter(d => 
-        (d.title && d.title.toLowerCase().includes(searchStr)) || 
-        (d.summary && d.summary.toLowerCase().includes(searchStr))
-    );
-
-    if (filtered.length === 0) {
-        container.innerHTML = `<div class="text-center text-slate-400 py-8 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">No documents found matching "${searchStr}". Upload a new PDF to get started!</div>`;
-        document.getElementById('deep-dig-container').classList.add('hidden');
+    if (docsLibrary.length === 0) {
+        container.innerHTML = `<div class="text-center text-slate-400 py-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">No documents found in <code>js/docs_library.json</code>. Make sure the file is placed in your <code>js/</code> folder.</div>`;
         return;
     }
 
-    container.innerHTML = filtered.map(d => `
-        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 rounded-xl shadow-sm">
-            <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4 border-b border-slate-100 dark:border-slate-700 pb-4">
-                <h3 class="font-bold text-lg text-blue-600 dark:text-blue-400">${d.title}</h3>
-                <a href="${d.fileUrl}" target="_blank" class="bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm whitespace-nowrap">
-                    <i class="fa-solid fa-up-right-from-square mr-1"></i> View Raw PDF
-                </a>
+    // Default View: List indexed document cards
+    container.innerHTML = docsLibrary.map(d => `
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-5 rounded-xl shadow-sm space-y-2">
+            <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3">
+                <div>
+                    <span class="bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded uppercase">${d.category || 'Manual'}</span>
+                    <h3 class="font-bold text-base text-slate-800 dark:text-slate-100 mt-1">${d.title}</h3>
+                </div>
+                ${d.fileUrl ? `<a href="${d.fileUrl}" target="_blank" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1.5"><i class="fa-solid fa-file-pdf"></i> View PDF</a>` : `<span class="text-xs text-slate-400 italic">No PDF Linked</span>`}
             </div>
-            <div class="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 whitespace-pre-wrap">${d.summary}</div>
-            <div class="mt-5 pt-4 border-t border-slate-100 dark:border-slate-700 flex justify-end">
-                <button onclick="prepDeepDig('${d.fileId}', '${d.title.replace(/'/g, "\\'")}')" class="text-sm font-bold text-blue-600 hover:text-blue-500 dark:text-blue-400 transition bg-blue-50 dark:bg-blue-900/30 px-4 py-2 rounded-lg">
-                    <i class="fa-solid fa-robot mr-1"></i> Deep Dig this Document
-                </button>
-            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">${d.content ? d.content.substring(0, 200) + '...' : 'No text content available.'}</p>
         </div>
     `).join('');
 }
 
-function executeHelpSearch() {
+async function executeAiDocQuery() {
+    const queryInput = document.getElementById('aiQueryInput');
+    const question = queryInput ? queryInput.value.trim() : '';
+    if (!question) return alert("Please enter a question for the AI.");
+
+    const loadingDiv = document.getElementById('ai-query-loading');
+    const resultsDiv = document.getElementById('ai-query-results');
+
+    loadingDiv.classList.remove('hidden');
+    resultsDiv.innerHTML = '';
+
+    // 1. Prepare JSON Context for Gemini
+    const libraryContext = docsLibrary.map(d => ({
+        title: d.title,
+        category: d.category,
+        content: d.content
+    }));
+
+    const prompt = `You are an expert automotive technician assistant. Based ONLY on the following shop document library JSON data, answer the technician's question precisely and clearly.
+
+Technician Question: "${question}"
+
+Instructions:
+- Extract ONLY the relevant information requested.
+- Format the response with clean, bold bullet points and clear headings.
+- Specify which document title the information came from.
+- If the information is not found in the library, state clearly that it is not in the current manuals.
+
+Document Library JSON:
+${JSON.stringify(libraryContext)}`;
+
+    try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent?key=${GEMINI_BROWSER_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+            })
+        });
+
+        const data = await response.json();
+        loadingDiv.classList.add('hidden');
+
+        if (data.candidates && data.candidates.length > 0) {
+            const aiAnswer = data.candidates[0].content.parts[0].text;
+
+            resultsDiv.innerHTML = `
+                <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 rounded-xl shadow-md space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3">
+                        <h3 class="font-bold text-lg text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                            <i class="fa-solid fa-robot"></i> AI Answer
+                        </h3>
+                        <button onclick="renderHelpDocs()" class="text-xs text-slate-500 hover:text-slate-700 font-bold">Clear Query</button>
+                    </div>
+                    <div class="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">${aiAnswer}</div>
+                    
+                    <div class="pt-4 border-t border-slate-100 dark:border-slate-700 flex flex-wrap gap-2 items-center justify-between">
+                        <span class="text-xs font-bold text-slate-500">Related Manuals:</span>
+                        <div class="flex flex-wrap gap-2">
+                            ${docsLibrary.map(d => d.fileUrl ? `
+                                <a href="${d.fileUrl}" target="_blank" class="bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 hover:bg-blue-100">
+                                    <i class="fa-solid fa-file-pdf"></i> View ${d.title} PDF
+                                </a>
+                            ` : '').join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            resultsDiv.innerHTML = `<div class="p-6 bg-white dark:bg-slate-800 rounded-xl text-center text-red-500 font-bold">No answer generated. API Error: ${JSON.stringify(data)}</div>`;
+        }
+    } catch(err) {
+        loadingDiv.classList.add('hidden');
+        resultsDiv.innerHTML = `<div class="p-6 bg-white dark:bg-slate-800 rounded-xl text-center text-red-500 font-bold">Query Error: ${err.message}</div>`;
+    }
+}
+
+/* -------------------------------------------
+   HELP CONFIG & PDF LINKER LOGIC
+------------------------------------------- */
+function openHelpConfigModal() {
+    const listContainer = document.getElementById('jsonDocListContainer');
+    if (!listContainer) return;
+
+    if (docsLibrary.length === 0) {
+        listContainer.innerHTML = '<div class="text-center text-slate-400 py-4 text-xs">No documents found in docs_library.json</div>';
+    } else {
+        listContainer.innerHTML = docsLibrary.map((d, index) => `
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 gap-2">
+                <div>
+                    <strong class="text-sm text-slate-800 dark:text-slate-100 block">${d.title}</strong>
+                    <span class="text-[10px] text-slate-400">${d.filename || 'JSON Entry'}</span>
+                </div>
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    ${d.fileUrl ? `<a href="${d.fileUrl}" target="_blank" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"><i class="fa-solid fa-check"></i> Linked</a>` : ''}
+                    <label class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-xs font-bold cursor-pointer transition whitespace-nowrap">
+                        <i class="fa-solid fa-cloud-arrow-up mr-1"></i> ${d.fileUrl ? 'Relink PDF' : 'Link PDF'}
+                        <input type="file" accept=".pdf" class="hidden" onchange="uploadPdfForDoc(event, ${index})">
+                    </label>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    document.getElementById('helpConfigModal').classList.remove('hidden');
+    document.getElementById('helpConfigModal').classList.add('flex');
+}
+
+function closeHelpConfigModal() {
+    document.getElementById('helpConfigModal').classList.add('hidden');
+    document.getElementById('helpConfigModal').classList.remove('flex');
     renderHelpDocs();
 }
 
-// Live search listener
-document.addEventListener('keyup', (e) => {
-    if (e.target && e.target.id === 'helpSearchInput') {
-        executeHelpSearch();
-    }
-});
+async function uploadPdfForDoc(e, index) {
+    const file = e.target.files[0];
+    if (!file) return;
 
-// Update the file input label dynamically when a PDF is selected
-document.addEventListener('change', (e) => {
-    if (e.target && e.target.id === 'uploadDocFile') {
-        const fileName = e.target.files[0] ? e.target.files[0].name : "Click to select PDF";
-        document.getElementById('uploadDocName').innerText = fileName;
-    }
-});
-
-function openUploadDocModal() {
-    document.getElementById('uploadDocModal').classList.remove('hidden');
-    document.getElementById('uploadDocModal').classList.add('flex');
-    document.getElementById('uploadDocTitle').value = '';
-    document.getElementById('uploadDocFile').value = '';
-    document.getElementById('uploadDocName').innerText = 'Click to select PDF';
-}
-
-function closeUploadDocModal() {
-    document.getElementById('uploadDocModal').classList.add('hidden');
-    document.getElementById('uploadDocModal').classList.remove('flex');
-}
-
-async function processNewDocument() {
-    const title = document.getElementById('uploadDocTitle').value.trim();
-    const fileInput = document.getElementById('uploadDocFile');
-
-    if (!title) return alert("Please enter a document title.");
-    if (!fileInput.files || fileInput.files.length === 0) return alert("Please select a PDF file.");
-
-    const file = fileInput.files[0];
+    const doc = docsLibrary[index];
     const reader = new FileReader();
-
-    const btn = document.querySelector('#uploadDocModal button:nth-child(2)');
+    const btn = e.target.parentElement;
     const originalText = btn.innerHTML;
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Reading PDF...';
-    btn.disabled = true;
 
-    reader.onload = async function(e) {
-        // Strip the data URL prefix to get raw base64
-        const base64Data = e.target.result.split(',')[1];
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
+    btn.classList.add('pointer-events-none', 'opacity-75');
+
+    reader.onload = async function(evt) {
+        const base64Data = evt.target.result.split(',')[1];
 
         try {
             const res = await fetch(GOOGLE_SCRIPT_URL, {
@@ -1349,75 +1423,32 @@ async function processNewDocument() {
                 headers: { 'Content-Type': 'text/plain' },
                 body: JSON.stringify({
                     action: "uploadDoc",
-                    title: title,
+                    title: doc.title,
                     filename: file.name,
                     fileData: base64Data
                 })
             });
+
             const data = await res.json();
-            
-            if (data.status === "success") {
-                updateSyncStatus("Document Indexed!");
-                closeUploadDocModal();
-                await fetchShopDocs(); // Pull the fresh list from Sheets
-                renderHelpDocs(); // Update the UI
+            if (data.status === "success" && data.url) {
+                doc.fileUrl = data.url;
+                pdfDriveLinks[doc.title] = data.url;
+                localStorage.setItem('pdfDriveLinks', JSON.stringify(pdfDriveLinks));
+
+                updateSyncStatus("PDF Linked to Google Drive!");
+                openHelpConfigModal();
             } else {
-                alert("Upload failed.");
+                alert("Failed to upload PDF to Drive.");
             }
         } catch(err) {
-            alert("Error uploading document: " + err.message);
+            alert("Upload Error: " + err.message);
         }
-        
+
         btn.innerHTML = originalText;
-        btn.disabled = false;
+        btn.classList.remove('pointer-events-none', 'opacity-75');
     };
-    
+
     reader.readAsDataURL(file);
-}
-
-function prepDeepDig(fileId, title) {
-    currentDeepDigFileId = fileId;
-    const container = document.getElementById('deep-dig-container');
-    container.classList.remove('hidden');
-    
-    const input = document.getElementById('deepDigInput');
-    input.placeholder = `Ask a question specifically about the ${title}...`;
-    input.value = '';
-    input.focus();
-    
-    document.getElementById('deep-dig-answer').classList.add('hidden');
-    container.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
-async function executeDeepDig() {
-    const question = document.getElementById('deepDigInput').value.trim();
-    if (!question || !currentDeepDigFileId) return alert("Please enter a question.");
-
-    const loadingDiv = document.getElementById('deep-dig-loading');
-    const answerDiv = document.getElementById('deep-dig-answer');
-    
-    loadingDiv.classList.remove('hidden');
-    answerDiv.classList.add('hidden');
-
-    try {
-        const res = await fetch(GOOGLE_SCRIPT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify({
-                action: "deepDig",
-                question: question,
-                fileId: currentDeepDigFileId
-            })
-        });
-        const data = await res.json();
-        
-        loadingDiv.classList.add('hidden');
-        answerDiv.innerHTML = `<strong class="text-blue-600 dark:text-blue-400 block mb-2"><i class="fa-solid fa-check mr-2"></i> AI Response:</strong><div class="whitespace-pre-wrap leading-relaxed">${data.answer || "No response received."}</div>`;
-        answerDiv.classList.remove('hidden');
-    } catch(e) {
-        loadingDiv.classList.add('hidden');
-        alert("Error during Deep Dig: " + e.message);
-    }
 }
 
 /* -------------------------------------------
