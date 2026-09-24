@@ -93,7 +93,7 @@ function updateSyncStatus(msg, isError = false) {
    GLOBAL DATA VARIABLES & CONSTANTS
 ------------------------------------------- */
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwUnIEHNpyL1onu52p5lwvX27L1jhgvscQlpnMb6NIDcWaikJu111lFz8xkuAlROePqLw/exec";
-const GEMINI_BROWSER_KEY = "AQ.Ab8RN6Kotaag6DpmqbFZqcG0iEOtW8ZHWQL_apXY_FM52MvxOQ"; // Your Gemini Key
+const GEMINI_BROWSER_KEY = "AIzaSyCqt1xbUFMXcB9MXrjiPN8CXnnjHgvKeZ4"; // Your Gemini Key
 localStorage.removeItem('shopJobs'); // Clear stale jobs
 
 let jobsData = [];
