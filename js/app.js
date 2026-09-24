@@ -1299,40 +1299,29 @@ async function executeAiDocQuery() {
     loadingDiv.classList.remove('hidden');
     resultsDiv.innerHTML = '';
 
-    // 1. Prepare JSON Context for Gemini
+    // Strip down the JSON to only send the necessary text to Apps Script
     const libraryContext = docsLibrary.map(d => ({
         title: d.title,
         category: d.category,
         content: d.content
     }));
 
-    const prompt = `You are an expert automotive technician assistant. Based ONLY on the following shop document library JSON data, answer the technician's question precisely and clearly.
-
-Technician Question: "${question}"
-
-Instructions:
-- Extract ONLY the relevant information requested.
-- Format the response with clean, bold bullet points and clear headings.
-- Specify which document title the information came from.
-- If the information is not found in the library, state clearly that it is not in the current manuals.
-
-Document Library JSON:
-${JSON.stringify(libraryContext)}`;
-
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent?key=${GEMINI_BROWSER_KEY}`, {
+        const res = await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
+                action: "queryAiJson",
+                question: question,
+                library: libraryContext
             })
         });
 
-        const data = await response.json();
+        const data = await res.json();
         loadingDiv.classList.add('hidden');
 
-        if (data.candidates && data.candidates.length > 0) {
-            const aiAnswer = data.candidates[0].content.parts[0].text;
+        if (data.status === "success" && data.answer) {
+            const aiAnswer = data.answer;
 
             resultsDiv.innerHTML = `
                 <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-6 rounded-xl shadow-md space-y-4">
@@ -1357,11 +1346,11 @@ ${JSON.stringify(libraryContext)}`;
                 </div>
             `;
         } else {
-            resultsDiv.innerHTML = `<div class="p-6 bg-white dark:bg-slate-800 rounded-xl text-center text-red-500 font-bold">No answer generated. API Error: ${JSON.stringify(data)}</div>`;
+            resultsDiv.innerHTML = `<div class="p-6 bg-white dark:bg-slate-800 rounded-xl text-center text-red-500 font-bold">Error: ${data.answer || 'No response generated.'}</div>`;
         }
     } catch(err) {
         loadingDiv.classList.add('hidden');
-        resultsDiv.innerHTML = `<div class="p-6 bg-white dark:bg-slate-800 rounded-xl text-center text-red-500 font-bold">Query Error: ${err.message}</div>`;
+        resultsDiv.innerHTML = `<div class="p-6 bg-white dark:bg-slate-800 rounded-xl text-center text-red-500 font-bold">Query Connection Error: ${err.message}</div>`;
     }
 }
 
